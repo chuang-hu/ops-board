@@ -62,6 +62,11 @@ h2 small{font-weight:400;color:var(--mut);font-size:13px}
 #login input{width:100%;border:1px solid var(--line);border-radius:8px;padding:10px;font-size:16px;margin-bottom:10px}
 #login button{width:100%;padding:11px;font-size:16px}
 #msg{color:#C0392B;font-size:13px;min-height:18px}
+.modal{position:fixed;inset:0;background:#0006;z-index:20;display:flex;align-items:center;justify-content:center;padding:16px}
+.mbox{background:#fff;border-radius:14px;padding:18px;width:100%;max-width:420px}
+.mbox h3{margin:0 0 10px;font-size:16px}
+.mbox input,.mbox textarea{width:100%;border:1px solid var(--line);border-radius:8px;padding:9px;font-size:16px;margin-bottom:10px;font-family:inherit}
+.mrow{display:flex;gap:8px;justify-content:flex-end}
 .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:8px 14px;border-radius:8px;font-size:13px;opacity:0;transition:.3s;pointer-events:none}
 .toast.on{opacity:1}
 @media (max-width:760px){.zones{grid-template-columns:1fr}.board{grid-template-columns:1fr}.col{min-height:0}}
@@ -107,6 +112,23 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': 
 const taipeiDay = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Taipei' }).format(new Date());
 let S = { routines: [], checks: new Set(), cards: [], day: taipeiDay(), filter: 'all', edit: false };
 
+function armed(btn) { // 第一次點變「確定？」，3 秒內再點才執行（不用瀏覽器對話框）
+  if (btn.dataset.arm) return true;
+  btn.dataset.arm = '1'; const old = btn.textContent; btn.textContent = '確定？'; btn.style.background = '#C0392B'; btn.style.color = '#fff';
+  setTimeout(() => { if (btn.isConnected) { delete btn.dataset.arm; btn.textContent = old; btn.style.background = ''; btn.style.color = ''; } }, 3000);
+  return false;
+}
+function editDialog(c) {
+  return new Promise(res => {
+    const w = document.createElement('div'); w.className = 'modal';
+    w.innerHTML = `<div class="mbox"><h3>修改待辦</h3><input id="mt" value="${esc(c.title)}"><textarea id="mn" rows="4" placeholder="備註（可空白）">${esc(c.note || '')}</textarea><div class="mrow"><button class="btn ghost" id="mc">取消</button><button class="btn" id="mo">儲存</button></div></div>`;
+    document.body.appendChild(w); w.querySelector('#mt').focus();
+    const done = v => { w.remove(); res(v); };
+    w.querySelector('#mc').onclick = () => done(null);
+    w.querySelector('#mo').onclick = () => { const t = w.querySelector('#mt').value.trim(); if (t) done({ title: t, note: w.querySelector('#mn').value.trim() }); };
+    w.onclick = e => { if (e.target === w) done(null); };
+  });
+}
 function toast(t) { const e = $('toast'); e.textContent = t; e.classList.add('on'); setTimeout(() => e.classList.remove('on'), 1800); }
 function fail(e) { console.error(e); toast('存檔失敗：' + (e.message || e)); }
 
@@ -171,17 +193,16 @@ document.addEventListener('click', async e => {
   if (d.f) { S.filter = d.f; renderBoard(); }
   else if (d.mv) moveCard(d.mv, d.to);
   else if (d.del) {
-    const c = S.cards.find(x => x.id === d.del); if (!confirm('刪除「' + c.title + '」？')) return;
+    if (!armed(e.target)) return;
     S.cards = S.cards.filter(x => x.id !== d.del); renderBoard();
     const { error } = await sb.from('ops_cards').delete().eq('id', d.del); if (error) { fail(error); load(); }
   } else if (d.ed) {
     const c = S.cards.find(x => x.id === d.ed);
-    const t = prompt('待辦名稱', c.title); if (t === null || !t.trim()) return;
-    const n = prompt('備註（可空白）', c.note || ''); if (n === null) return;
-    c.title = t.trim(); c.note = n.trim(); renderBoard();
+    const v = await editDialog(c); if (!v) return;
+    c.title = v.title; c.note = v.note; renderBoard();
     const { error } = await sb.from('ops_cards').update({ title: c.title, note: c.note, updated_at: new Date().toISOString() }).eq('id', c.id); if (error) { fail(error); load(); }
   } else if (d.dr) {
-    const r = S.routines.find(x => x.id === d.dr); if (!confirm('移除例行事項「' + r.title + '」？（過去的打勾紀錄會保留）')) return;
+    if (!armed(e.target)) return;
     S.routines = S.routines.filter(x => x.id !== d.dr); renderRoutines();
     const { error } = await sb.from('ops_routines').update({ active: false }).eq('id', d.dr); if (error) { fail(error); load(); }
   } else if (d.na) {
