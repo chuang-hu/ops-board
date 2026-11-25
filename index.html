@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>營運看板</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="theme-color" content="#E8A33D">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="robots" content="noindex">
+<style>
+:root{--brand:#E8A33D;--brand-d:#B9781B;--ink:#3B2F25;--mut:#8C7B6B;--bg:#FAF6F0;--card:#fff;--line:#EFE6DA;--hx:#E8A33D;--kg:#4F8A6E}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif;background:var(--bg);color:var(--ink);-webkit-tap-highlight-color:transparent}
+header{position:sticky;top:0;z-index:5;background:var(--brand);color:#fff;padding:calc(10px + env(safe-area-inset-top)) 16px 10px;display:flex;align-items:center;gap:10px}
+header h1{font-size:18px;margin:0;flex:1}
+header .d{font-size:14px;opacity:.9}
+header button{background:#ffffff33;color:#fff;border:0;border-radius:8px;padding:6px 10px;font-size:13px}
+main{max-width:1200px;margin:0 auto;padding:14px}
+h2{font-size:16px;margin:18px 0 8px;display:flex;align-items:center;gap:8px}
+h2 small{font-weight:400;color:var(--mut);font-size:13px}
+.zones{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.box h3{margin:0 0 8px;font-size:15px;display:flex;align-items:center;gap:6px}
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+.prog{height:6px;background:var(--line);border-radius:4px;overflow:hidden;margin-bottom:8px}
+.prog span{display:block;height:100%;background:var(--brand);transition:width .3s}
+.rt{display:flex;align-items:center;gap:10px;padding:9px 2px;border-top:1px solid var(--line);font-size:15px}
+.rt:first-of-type{border-top:0}
+.rt input{width:22px;height:22px;accent-color:var(--brand);flex:none}
+.rt label{flex:1;cursor:pointer}
+.rt.done label{color:var(--mut);text-decoration:line-through}
+.x{background:none;border:0;color:#c9b9a8;font-size:18px;cursor:pointer;padding:0 4px;display:none}
+.edit .x{display:inline}
+.add{display:flex;gap:6px;margin-top:8px}
+.add input,.add select{flex:1;min-width:0;border:1px solid var(--line);border-radius:8px;padding:8px;font-size:15px;background:#fff;color:var(--ink)}
+.add select{flex:none}
+.add button,.btn{background:var(--brand);color:#fff;border:0;border-radius:8px;padding:8px 12px;font-size:14px;cursor:pointer;flex:none}
+.btn.ghost{background:none;color:var(--brand-d);border:1px solid var(--brand)}
+.filters{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:#fff;border-radius:20px;padding:5px 12px;font-size:13px;cursor:pointer;color:var(--ink)}
+.chip.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.board{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.col{background:#F3ECE2;border-radius:14px;padding:10px;min-height:120px}
+.col h3{margin:2px 4px 8px;font-size:14px;display:flex;justify-content:space-between}
+.col.over{outline:2px dashed var(--brand)}
+.card{background:#fff;border-radius:10px;padding:9px 10px;margin-bottom:8px;box-shadow:0 1px 2px #0000000f;border-left:4px solid var(--hx);font-size:14px}
+.card.kg{border-left-color:var(--kg)}
+.card .t{font-weight:600;line-height:1.4}
+.card .n{color:var(--mut);font-size:13px;margin-top:3px;line-height:1.45;white-space:pre-wrap}
+.card .row{display:flex;gap:4px;margin-top:6px;align-items:center}
+.card .tag{font-size:11px;padding:1px 7px;border-radius:10px;background:#FBEBD2;color:var(--brand-d)}
+.card.kg .tag{background:#E1EFE7;color:var(--kg)}
+.card .row .sp{flex:1}
+.card .row button{background:#F3ECE2;border:0;border-radius:6px;padding:3px 8px;font-size:13px;cursor:pointer;color:var(--ink)}
+.empty{color:var(--mut);font-size:13px;text-align:center;padding:10px}
+#login{max-width:360px;margin:12vh auto;background:#fff;border-radius:16px;padding:24px;border:1px solid var(--line)}
+#login h1{font-size:20px;margin:0 0 4px}
+#login p{color:var(--mut);font-size:13px;margin:0 0 14px}
+#login input{width:100%;border:1px solid var(--line);border-radius:8px;padding:10px;font-size:16px;margin-bottom:10px}
+#login button{width:100%;padding:11px;font-size:16px}
+#msg{color:#C0392B;font-size:13px;min-height:18px}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:8px 14px;border-radius:8px;font-size:13px;opacity:0;transition:.3s;pointer-events:none}
+.toast.on{opacity:1}
+@media (max-width:760px){.zones{grid-template-columns:1fr}.board{grid-template-columns:1fr}.col{min-height:0}}
+</style>
+</head>
+<body>
+<div id="login" hidden>
+  <h1>營運看板</h1>
+  <p>用後興老師系統的帳號登入（只有主任帳號看得到資料）。</p>
+  <input id="em" type="email" autocomplete="username" placeholder="Email">
+  <input id="pw" type="password" autocomplete="current-password" placeholder="密碼">
+  <div id="msg"></div>
+  <button class="btn" id="go">登入</button>
+</div>
+<div id="app" hidden>
+<header><h1>營運看板</h1><span class="d" id="today"></span><button id="out">登出</button></header>
+<main>
+  <h2>今日例行 <small>每天台北時間 0 點自動清空</small><span style="flex:1"></span><button class="btn ghost" id="editBtn">編輯</button></h2>
+  <div class="zones" id="zones"></div>
+
+  <h2>待辦看板</h2>
+  <div class="filters" id="filters"></div>
+  <div class="add" style="margin:10px 0">
+    <select id="cz"><option value="houxing">後興</option><option value="kinder">幼兒園</option></select>
+    <input id="ct" placeholder="新增待辦…">
+    <button id="cadd">新增</button>
+  </div>
+  <div class="board" id="board"></div>
+</main>
+</div>
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+const SB_URL = 'https://aaugxikeqsgygichyphr.supabase.co';
+const SB_KEY = 'sb_publishable_XTXZz_5YOVrpfONlwnfJtw_oL77cQMP';
+const sb = createClient(SB_URL, SB_KEY, { auth: { persistSession: true, storageKey: 'ops-board-auth' } });
+
+const ZONES = { houxing: { name: '後興', color: 'var(--hx)' }, kinder: { name: '幼兒園', color: 'var(--kg)' } };
+const COLS = [['todo', '待辦'], ['doing', '進行中'], ['done', '完成']];
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const taipeiDay = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Taipei' }).format(new Date());
+let S = { routines: [], checks: new Set(), cards: [], day: taipeiDay(), filter: 'all', edit: false };
+
+function toast(t) { const e = $('toast'); e.textContent = t; e.classList.add('on'); setTimeout(() => e.classList.remove('on'), 1800); }
+function fail(e) { console.error(e); toast('存檔失敗：' + (e.message || e)); }
+
+async function load() {
+  S.day = taipeiDay();
+  const wd = '日一二三四五六'[new Date(S.day + 'T12:00:00+08:00').getUTCDay()];
+  $('today').textContent = S.day.slice(5).replace('-', '/') + '（' + wd + '）';
+  const [r, c, k] = await Promise.all([
+    sb.from('ops_routines').select('*').eq('active', true).order('sort'),
+    sb.from('ops_checks').select('routine_id').eq('day', S.day),
+    sb.from('ops_cards').select('*').order('sort').order('created_at'),
+  ]);
+  for (const x of [r, c, k]) if (x.error) return fail(x.error);
+  S.routines = r.data; S.checks = new Set(c.data.map(x => x.routine_id)); S.cards = k.data;
+  render();
+}
+
+function render() { renderRoutines(); renderBoard(); }
+
+function renderRoutines() {
+  $('zones').className = 'zones' + (S.edit ? ' edit' : '');
+  $('zones').innerHTML = Object.entries(ZONES).map(([z, Z]) => {
+    const items = S.routines.filter(r => r.zone === z), done = items.filter(r => S.checks.has(r.id)).length;
+    return `<div class="box"><h3><span class="dot" style="background:${Z.color}"></span>${Z.name}<span style="flex:1"></span><small style="color:var(--mut);font-weight:400">${done} / ${items.length}</small></h3>
+      <div class="prog"><span style="width:${items.length ? done / items.length * 100 : 0}%"></span></div>
+      ${items.map(r => `<div class="rt${S.checks.has(r.id) ? ' done' : ''}"><input type="checkbox" id="r${r.id}" data-r="${r.id}"${S.checks.has(r.id) ? ' checked' : ''}><label for="r${r.id}">${esc(r.title)}</label><button class="x" data-dr="${r.id}" title="移除">×</button></div>`).join('') || '<div class="empty">還沒有例行事項</div>'}
+      ${S.edit ? `<div class="add"><input placeholder="新增例行事項…" data-nz="${z}"><button data-na="${z}">加</button></div>` : ''}</div>`;
+  }).join('');
+}
+
+function renderBoard() {
+  const f = S.filter;
+  $('filters').innerHTML = [['all', '全部'], ['houxing', '後興'], ['kinder', '幼兒園']].map(([k, t]) => `<button class="chip${f === k ? ' on' : ''}" data-f="${k}">${t}</button>`).join('');
+  const cards = S.cards.filter(c => f === 'all' || c.zone === f);
+  $('board').innerHTML = COLS.map(([s, t], i) => {
+    const cs = cards.filter(c => c.status === s);
+    return `<div class="col" data-col="${s}"><h3>${t}<span>${cs.length}</span></h3>${cs.map(c => `
+      <div class="card${c.zone === 'kinder' ? ' kg' : ''}" draggable="true" data-id="${c.id}">
+        <div class="t">${esc(c.title)}</div>${c.note ? `<div class="n">${esc(c.note)}</div>` : ''}
+        <div class="row"><span class="tag">${ZONES[c.zone]?.name || c.zone}</span><span class="sp"></span>
+        ${i > 0 ? `<button data-mv="${c.id}" data-to="${COLS[i - 1][0]}" title="往左">◀</button>` : ''}
+        ${i < 2 ? `<button data-mv="${c.id}" data-to="${COLS[i + 1][0]}" title="往右">▶</button>` : ''}
+        <button data-ed="${c.id}" title="修改">✎</button><button data-del="${c.id}" title="刪除">🗑</button></div></div>`).join('') || '<div class="empty">—</div>'}</div>`;
+  }).join('');
+}
+
+async function toggle(id, on) {
+  on ? S.checks.add(id) : S.checks.delete(id); renderRoutines();
+  const q = on ? sb.from('ops_checks').upsert({ routine_id: id, day: S.day }) : sb.from('ops_checks').delete().eq('routine_id', id).eq('day', S.day);
+  const { error } = await q; if (error) { fail(error); load(); }
+}
+async function moveCard(id, to) {
+  const c = S.cards.find(x => x.id === id); if (!c || c.status === to) return;
+  c.status = to; renderBoard();
+  const { error } = await sb.from('ops_cards').update({ status: to, updated_at: new Date().toISOString() }).eq('id', id);
+  if (error) { fail(error); load(); }
+}
+
+document.addEventListener('change', e => { const r = e.target.dataset.r; if (r) toggle(r, e.target.checked); });
+document.addEventListener('click', async e => {
+  const d = e.target.dataset;
+  if (d.f) { S.filter = d.f; renderBoard(); }
+  else if (d.mv) moveCard(d.mv, d.to);
+  else if (d.del) {
+    const c = S.cards.find(x => x.id === d.del); if (!confirm('刪除「' + c.title + '」？')) return;
+    S.cards = S.cards.filter(x => x.id !== d.del); renderBoard();
+    const { error } = await sb.from('ops_cards').delete().eq('id', d.del); if (error) { fail(error); load(); }
+  } else if (d.ed) {
+    const c = S.cards.find(x => x.id === d.ed);
+    const t = prompt('待辦名稱', c.title); if (t === null || !t.trim()) return;
+    const n = prompt('備註（可空白）', c.note || ''); if (n === null) return;
+    c.title = t.trim(); c.note = n.trim(); renderBoard();
+    const { error } = await sb.from('ops_cards').update({ title: c.title, note: c.note, updated_at: new Date().toISOString() }).eq('id', c.id); if (error) { fail(error); load(); }
+  } else if (d.dr) {
+    const r = S.routines.find(x => x.id === d.dr); if (!confirm('移除例行事項「' + r.title + '」？（過去的打勾紀錄會保留）')) return;
+    S.routines = S.routines.filter(x => x.id !== d.dr); renderRoutines();
+    const { error } = await sb.from('ops_routines').update({ active: false }).eq('id', d.dr); if (error) { fail(error); load(); }
+  } else if (d.na) {
+    const inp = document.querySelector(`[data-nz="${d.na}"]`), t = inp.value.trim(); if (!t) return;
+    const sort = Math.max(0, ...S.routines.filter(r => r.zone === d.na).map(r => r.sort)) + 1;
+    const { data, error } = await sb.from('ops_routines').insert({ zone: d.na, title: t, sort }).select().single();
+    if (error) return fail(error); S.routines.push(data); renderRoutines();
+  }
+});
+$('editBtn').onclick = () => { S.edit = !S.edit; $('editBtn').textContent = S.edit ? '完成' : '編輯'; renderRoutines(); };
+async function addCard() {
+  const t = $('ct').value.trim(); if (!t) return;
+  const { data, error } = await sb.from('ops_cards').insert({ zone: $('cz').value, title: t, status: 'todo', sort: 0 }).select().single();
+  if (error) return fail(error); $('ct').value = ''; S.cards.unshift(data); renderBoard();
+}
+$('cadd').onclick = addCard; $('ct').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing) addCard(); });
+
+// 桌機拖拉
+let dragId = null;
+document.addEventListener('dragstart', e => { const c = e.target.closest?.('.card'); if (c) { dragId = c.dataset.id; e.dataTransfer.effectAllowed = 'move'; } });
+document.addEventListener('dragover', e => { const col = e.target.closest?.('.col'); if (col && dragId) { e.preventDefault(); document.querySelectorAll('.col').forEach(x => x.classList.toggle('over', x === col)); } });
+document.addEventListener('drop', e => { const col = e.target.closest?.('.col'); document.querySelectorAll('.col').forEach(x => x.classList.remove('over')); if (col && dragId) { e.preventDefault(); moveCard(dragId, col.dataset.col); } dragId = null; });
+document.addEventListener('dragend', () => { dragId = null; document.querySelectorAll('.col').forEach(x => x.classList.remove('over')); });
+
+// 跨日：切回 app 或每分鐘檢查日期
+const recheck = () => { if (!$('app').hidden && taipeiDay() !== S.day) load(); };
+document.addEventListener('visibilitychange', () => { if (!document.hidden) { recheck(); if (!$('app').hidden) load(); } });
+setInterval(recheck, 60000);
+
+async function show() {
+  const { data } = await sb.auth.getSession();
+  const on = !!data.session;
+  $('login').hidden = on; $('app').hidden = !on;
+  if (on) load();
+}
+$('go').onclick = async () => {
+  $('msg').textContent = '';
+  const { error } = await sb.auth.signInWithPassword({ email: $('em').value.trim(), password: $('pw').value });
+  if (error) { $('msg').textContent = '登入失敗：' + error.message; return; }
+  $('pw').value = ''; show();
+};
+$('pw').addEventListener('keydown', e => { if (e.key === 'Enter') $('go').click(); });
+$('out').onclick = async () => { await sb.auth.signOut(); show(); };
+show();
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+</script>
+</body>
+</html>
